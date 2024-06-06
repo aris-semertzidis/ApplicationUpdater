@@ -1,19 +1,19 @@
-﻿using System.Text.Json.Serialization;
-
-namespace ApplicationUpdater.Core;
+﻿namespace ApplicationUpdater.Core;
 
 public class BuildManifest
 {
     public record ManifestItem(string fileName, string hash);
 
-    [JsonInclude]
-    public readonly ManifestItem[] items;
+    public ManifestItem[] items = Array.Empty<ManifestItem>();
 
-    [JsonInclude]
     public string? version;
 
-    [JsonInclude]
     public string? commit;
+
+    /// <summary>
+    /// Used for Json Serialization
+    /// </summary>
+    public BuildManifest() { }
 
     public BuildManifest(int itemCount)
     {

@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Text;
 
-namespace ApplicationUpdater.Core.Builder;
+namespace ApplicationUpdater.Core;
 
 public enum SystemTargetEnum
 {
@@ -26,7 +26,7 @@ public class SystemTargetEnumerable : IEnumerable
         foreach (object? item in this)
         {
             sb.Append("(");
-            sb.Append((int)((SystemTargetEnum)(item)));
+            sb.Append((int)(SystemTargetEnum)item);
             sb.Append(")");
             sb.Append(item);
             sb.Append(", ");

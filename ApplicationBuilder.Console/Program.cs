@@ -1,12 +1,13 @@
-﻿using ApplicationUpdater.Core.Builder;
-using ApplicationUpdater.Core.Builder.DataWriter;
-using System.Text.Json;
+﻿using ApplicationUpdater.Core;
+using ApplicationUpdater.Core.Builder;
+using ApplicationUpdater.Core.FileHandler;
+using ApplicationUpdater.Core.Utils;
 
 internal class Program
 {
     private const int EXPECTED_ARGS_COUNT = 3;
     private const string FTP_PARAMS_PATH = "ftp.json";
-
+    
     private static async Task Main(string[] args)
     {
         string? sourcePath = null;
@@ -45,33 +46,31 @@ internal class Program
         }
 
         SystemTargetEnum systemTargetEnum = (SystemTargetEnum)systemTarget;
-        IDataWriter dataWriter;
+        IFileWriter dataWriter;
         switch (systemTargetEnum)
         {
             case SystemTargetEnum.LocalFileSystem:
-                dataWriter = new SystemFileWriter();
+                dataWriter = new SystemFileHandler();
                 break;
             case SystemTargetEnum.FTP:
                 string text = File.ReadAllText(FTP_PARAMS_PATH);
-                FTPConfig? ftpParams = JsonSerializer.Deserialize<FTPConfig>(text);
-                if (ftpParams == null)
-                    throw new Exception("FTP params are not valid.");
+                FTPConfig? ftpConfig = JsonWrapper.Deserialize<FTPConfig>(text);
+                if (ftpConfig == null)
+                    throw new Exception("FTP config is not valid.");
 
-                dataWriter = new FTPWriter(ftpParams);
+                dataWriter = new FTPFileHandler(ftpConfig);
                 break;
             default:
                 throw new NotSupportedException();
         }
 
         string manifestName = "manifest.json";
-        await ApplicationBuilder.BuildApplication(
+        AppBuilder appBuilder = new(dataWriter);
+        appBuilder.onStatusUpdate += ConsoleWriteLine;
+        await appBuilder.BuildApplication(
             sourcePath,
             destinationPath,
-            manifestName,
-            dataWriter,
-            "*",
-            null,
-            ConsoleWriteLine);
+            manifestName);
     }
 
     private static void LogUsage()
@@ -81,7 +80,6 @@ internal class Program
 
     private static bool ValidateArguments(string[] args)
     {
-
         if (args.Length != EXPECTED_ARGS_COUNT)
         {
             LogUsage();
@@ -118,7 +116,7 @@ internal class Program
     /// </summary>
     private static void CreateTemplateFile()
     {
-        string json = JsonSerializer.Serialize(new FTPConfig("", "", ""), new JsonSerializerOptions() { WriteIndented = true });
+        string json = JsonWrapper.Serialize(new FTPConfig("", "", ""));
         string projectDirectory = GetProjectPath().FullName;
         string filePath = Path.Combine(projectDirectory, "Template", "ftp.json");
         File.WriteAllText(filePath, json);

@@ -1,43 +1,35 @@
-﻿using ApplicationUpdater.Core.Builder.DataWriter;
+﻿using ApplicationUpdater.Core.FileHandler;
 using ApplicationUpdater.Core.Utils;
-using System.Text.Json;
 
 namespace ApplicationUpdater.Core.Builder;
 
-public class ApplicationBuilder
+/// <summary>
+/// Create a manifest containing all files in the folder path and copy/upload them to the destination.
+/// </summary>
+public class AppBuilder : IHaveProgressEvents
 {
-    public static Task BuildApplicationWithLocalWriter(string folderPath, string destinationPath,
-        string manifestName,
-        string searchPattern = "*",
-        string? excludePattern = null,
-        Action<string>? logCallback = null)
+    public event EventHandlerT<int, int>? onProgress;
+    public event EventHandlerT<string>? onStatusUpdate;
+
+    private readonly IFileWriter dataWriter;
+
+    public AppBuilder(IFileWriter dataWriter)
     {
-        IDataWriter dataWriter = new SystemFileWriter();
-        return BuildApplication(folderPath, destinationPath, manifestName, dataWriter, searchPattern, excludePattern, logCallback);
+        this.dataWriter = dataWriter;
+
+        // Propagate events
+        dataWriter.onStatusUpdate += (status) => onStatusUpdate?.Invoke(status);
+        dataWriter.onProgress += (progress, total) => onProgress?.Invoke(progress, total);
     }
 
-    public static Task BuildApplicationWithFTPWriter(string folderPath, string destinationPath,
-        string manifestName,
-        FTPConfig ftpParams,
+    public async Task BuildApplication(string folderPath, string destinationPath, string manifestName,
         string searchPattern = "*",
-        string? excludePattern = null,
-        Action<string>? logCallback = null)
-    {
-        FTPWriter dataWriter = new FTPWriter(ftpParams);
-        return BuildApplication(folderPath, destinationPath, manifestName, dataWriter, searchPattern, excludePattern, logCallback);
-    }
-
-    public static async Task BuildApplication(string folderPath, string destinationPath,
-        string manifestName,
-        IDataWriter dataWriter,
-        string searchPattern = "*",
-        string? excludePattern = null,
-        Action<string>? logCallback = null)
+        string? excludePattern = null)
     {
         folderPath = folderPath.UnifyDirectorySeparators();
         destinationPath = destinationPath.UnifyDirectorySeparators();
 
-        logCallback?.Invoke("Creating manifest");
+        onStatusUpdate?.Invoke("Creating manifest");
 
         // Create manifest for build
         BuildManifest manifest = CreateManifest(folderPath, manifestName, searchPattern, excludePattern);
@@ -46,11 +38,11 @@ public class ApplicationBuilder
         manifest.commit = commit;
 
         // Save manifest locally
-        string json = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+        string json = JsonWrapper.Serialize(manifest);
         await File.WriteAllTextAsync(Path.Combine(folderPath, manifestName), json);
 
         // Write all files in manifest to destination
-        await dataWriter.WriteFiles(manifest, folderPath, destinationPath, manifestName, logCallback);
+        await dataWriter.WriteFiles(manifest, folderPath, destinationPath, manifestName);
     }
 
     /// <summary>

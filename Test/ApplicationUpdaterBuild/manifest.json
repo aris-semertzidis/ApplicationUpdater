@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "fileName": "/file_0.txt",
+      "hash": "b3664f27b756ec7bcc43bd8bc019cf2a"
+    },
+    {
+      "fileName": "/MyTestFolder_1/file_1.txt",
+      "hash": "9b697e68ba6ac360e94e165a2069b0ff"
+    },
+    {
+      "fileName": "/MyTestFolder_1/MyTestFolder_2/file_2",
+      "hash": "ffd9d815aaac7335a5f4c8d15d9bfc82"
+    }
+  ],
+  "version": null,
+  "commit": "dev:643666e"
+}
