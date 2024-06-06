@@ -22,27 +22,27 @@ public class AppBuilder : IHaveProgressEvents
         dataWriter.onProgress += (progress, total) => onProgress?.Invoke(progress, total);
     }
 
-    public async Task BuildApplication(string folderPath, string destinationPath, string manifestName,
+    public async Task BuildApplication(string localBuildFolder, string remoteWorkingDirectory, string manifestName,
         string searchPattern = "*",
         string? excludePattern = null)
     {
-        folderPath = folderPath.UnifyDirectorySeparators();
-        destinationPath = destinationPath.UnifyDirectorySeparators();
+        localBuildFolder = localBuildFolder.UnifyDirectorySeparators();
+        remoteWorkingDirectory = remoteWorkingDirectory.UnifyDirectorySeparators();
 
         onStatusUpdate?.Invoke("Creating manifest");
 
         // Create manifest for build
-        BuildManifest manifest = CreateManifest(folderPath, manifestName, searchPattern, excludePattern);
-        string commit = CreateCommitVersionFromGit(folderPath);
+        BuildManifest manifest = CreateManifest(localBuildFolder, manifestName, searchPattern, excludePattern);
+        string commit = CreateCommitVersionFromGit(localBuildFolder);
         // Create commit version
         manifest.commit = commit;
 
         // Save manifest locally
         string json = JsonWrapper.Serialize(manifest);
-        await File.WriteAllTextAsync(Path.Combine(folderPath, manifestName), json);
+        await File.WriteAllTextAsync(Path.Combine(localBuildFolder, manifestName), json);
 
         // Write all files in manifest to destination
-        await dataWriter.WriteFiles(manifest, folderPath, destinationPath, manifestName);
+        await dataWriter.WriteFiles(manifest, localBuildFolder, remoteWorkingDirectory, manifestName);
     }
 
     /// <summary>
@@ -52,8 +52,8 @@ public class AppBuilder : IHaveProgressEvents
     /// <param name="includeFilesPattern">The search pattern to filter the files. Default is "*" (all files).</param>
     /// <param name="excludeFilesPattern">The search pattern to exclude specific file types from the manifest.</param>
     /// <returns>A BuildManifest object containing all files in folder and their checksums (MD5).</returns>
-    /// <exception cref="ArgumentNullException">Thrown when the folderPath parameter is null or empty.</exception>
-    /// <exception cref="DirectoryNotFoundException">Thrown when the folderPath does not exist.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when the localBuildFolder parameter is null or empty.</exception>
+    /// <exception cref="DirectoryNotFoundException">Thrown when the localBuildFolder does not exist.</exception>
     public static BuildManifest CreateManifest(string? folderPath, string manifestName, string includeFilesPattern = "*", string? excludeFilesPattern = null)
     {
         if (string.IsNullOrEmpty(folderPath))

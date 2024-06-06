@@ -68,28 +68,44 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         this.workingDirectory = workingDirectory;
     }
 
-    public Task WriteFiles(BuildManifest manifest, string sourcePath, string workingDirectory, string manifestName)
+    public async Task WriteFiles(BuildManifest manifest, string localBuildFolder, string workingDirectory, string manifestName)
     {
         SetWorkingDirectory(workingDirectory);
 
         // Upload manifest file
-        string sourceManifestPath = PathUtils.CombinePaths(sourcePath, manifestName);
-        UploadFile(sourceManifestPath, manifestName);
+        string sourceManifestPath = PathUtils.CombinePaths(localBuildFolder, manifestName);
+        await UploadFile(sourceManifestPath, manifestName);
+
+        List<string> allFolders = GetAllDirectories(manifest);
+        foreach (string allDirectories in allFolders)
+        {
+            await CreateDirectory(allDirectories);
+        }
 
         foreach (BuildManifest.ManifestItem file in manifest.items)
         {
             // Relative prefix of the file
-            string sourceFilePath = PathUtils.CombinePaths(sourcePath, file.fileName);
+            string sourceFilePath = PathUtils.CombinePaths(localBuildFolder, file.fileName);
 
             string remoteFile = file.fileName;
             // Remove directory ('/') prefix
             if (remoteFile.StartsWith('/'))
                 remoteFile = remoteFile.Remove(0, 1);
 
-            UploadFile(sourceFilePath, remoteFile);
+            await UploadFile(sourceFilePath, remoteFile);
+        }
+    }
+
+    private List<string> GetAllDirectories(BuildManifest buildManifest)
+    {
+        List<string> allDirectories = new List<string>();
+        foreach (BuildManifest.ManifestItem item in buildManifest.items)
+        {
+            string[] incrementalDirectories = PathUtils.GetIncrementalDirectoryPaths(item.fileName);
+            allDirectories.AddRange(incrementalDirectories);
         }
 
-        return Task.CompletedTask;
+        return allDirectories.GroupBy(directory => directory).Select(directory => directory.First()).ToList();
     }
 
     public async Task<BuildManifest> LoadManifest(string buildPath, string manifestName)
@@ -199,7 +215,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         }
     }
 
-    private void CreateDirectory(string directory)
+    private Task CreateDirectory(string directory)
     {
         WebRequest webRequest = CreateFTPRequest(directory, WebRequestMethods.Ftp.MakeDirectory);
         try
@@ -213,7 +229,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         {
             // Directory already exists
             if (ex.Message.Contains("550"))
-                return;
+                return Task.CompletedTask;
 
             throw;
         }
@@ -221,14 +237,15 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         {
             onStatusUpdate?.Invoke($"Create directory:{directory} failed:{ex}");
         }
+        return Task.CompletedTask;
     }
 
-    private void UploadFile(string localFilePath, string remoteFilePath)
+    private Task UploadFile(string localFilePath, string remoteFilePath)
     {
         if (!File.Exists(localFilePath))
         {
             onStatusUpdate?.Invoke($"File does not exist: {localFilePath}");
-            return;
+            return Task.CompletedTask;
         }
 
         // Check files without a file extension
@@ -260,6 +277,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         {
             onStatusUpdate?.Invoke($"Uploading failed for local file:{localFilePath}, remote file:{remoteFilePath}, exception:{ex}");
         }
+        return Task.CompletedTask;
     }
 
     private void Delete(string directory)

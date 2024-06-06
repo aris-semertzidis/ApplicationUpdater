@@ -44,6 +44,6 @@ public static class PathUtils
                 continue;
             directories[i] = Path.Combine(directories[i - 1], directories[i]);
         }
-        return directories;
+        return directories.Where(x => !string.IsNullOrEmpty(x)).ToArray();
     }
 }
