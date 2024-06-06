@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ApplicationUpdater.Core\ApplicationUpdater.Core.csproj" />
+    <ProjectReference Include="..\..\ApplicationUpdater.Core\ApplicationUpdater.Core.csproj" />
   </ItemGroup>
 
 </Project>
