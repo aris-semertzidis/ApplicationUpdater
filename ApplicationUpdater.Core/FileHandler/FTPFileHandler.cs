@@ -86,8 +86,9 @@ public class FTPFileHandler : IFileWriter
             await CreateDirectory(allDirectories);
         }
 
-        foreach (BuildManifest.ManifestItem file in manifest.items)
+        for (int i = 0; i < manifest.items.Length; i++)
         {
+            BuildManifest.ManifestItem file = manifest.items[i];
             // Relative prefix of the file
             string sourceFilePath = PathUtils.CombinePaths(localBuildFolder, file.fileName);
 
@@ -97,6 +98,8 @@ public class FTPFileHandler : IFileWriter
                 remoteFile = remoteFile.Remove(0, 1);
 
             await UploadFile(sourceFilePath, remoteFile);
+
+            onProgress?.Invoke(i, manifest.items.Length);
         }
     }
 
@@ -188,6 +191,7 @@ public class FTPFileHandler : IFileWriter
             {
                 using (Stream ftpStream = webRequest.GetRequestStream())
                 {
+                    // TODO: Inject CancellationToken and use CopyToAsync
                     fileStream.CopyTo(ftpStream);
                 }
             }

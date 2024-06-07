@@ -6,7 +6,7 @@ using ApplicationUpdater.Core.Utils;
 internal class Program
 {
     private const int EXPECTED_ARGS_COUNT = 3;
-    private const string FTP_PARAMS_PATH = "ftp.json";
+    private const string FTP_CONFIG_PATH = "ftp.json";
     
     private static async Task Main(string[] args)
     {
@@ -53,7 +53,7 @@ internal class Program
                 dataWriter = new SystemFileHandler(sourcePath);
                 break;
             case SystemTargetEnum.FTP:
-                string text = File.ReadAllText(FTP_PARAMS_PATH);
+                string text = File.ReadAllText(FTP_CONFIG_PATH);
                 FTPConfig? ftpConfig = JsonWrapper.Deserialize<FTPConfig>(text);
                 if (ftpConfig == null)
                     throw new Exception("FTP config is not valid.");

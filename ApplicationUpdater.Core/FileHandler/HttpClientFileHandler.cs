@@ -42,7 +42,7 @@ public class HttpClientFileHandler : IFileLoader
     {
         string remotePath = PathUtils.CombinePaths(config.url, manifestName);
         string buildManifestJson = await DownloadTextFileToMemory(remotePath);
-        return JsonWrapper.Deserialize<BuildManifest>(buildManifestJson);
+        return JsonWrapper.Deserialize<BuildManifest>(buildManifestJson)!;
     }
 
     public async Task LoadFiles(BuildManifest buildManifest, string localBuildPath)

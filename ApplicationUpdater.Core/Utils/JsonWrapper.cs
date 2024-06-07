@@ -15,8 +15,8 @@ public static class JsonWrapper
         return JsonSerializer.Serialize(obj, jsonOptions);
     }
 
-    public static T Deserialize<T>(string json)
+    public static T? Deserialize<T>(string json)
     {
-        return JsonSerializer.Deserialize<T>(json, jsonOptions)!;
+        return JsonSerializer.Deserialize<T>(json, jsonOptions);
     }
 }

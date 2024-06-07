@@ -59,7 +59,7 @@ public class SystemFileHandler : IFileWriter, IFileLoader
             throw new FileNotFoundException($"The build manifest does not exist: {buildManifestSourcePath}");
 
         string buildManifestJson = File.ReadAllText(buildManifestSourcePath);
-        BuildManifest buildManifest = JsonWrapper.Deserialize<BuildManifest>(buildManifestJson);
+        BuildManifest buildManifest = JsonWrapper.Deserialize<BuildManifest>(buildManifestJson)!;
         return Task.FromResult(buildManifest);
     }
 
