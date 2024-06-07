@@ -1,10 +1,10 @@
 # Application Updater
 A simple program to upload your application and having clients to automatically update their files.
-Consists of 2 essensial elements. The AppBuilder and AppUpdater.
+Consists of 2 essential elements. The AppBuilder and AppUpdater.
 
 ## How is working
 AppBuilder is reading the local build folder and generating a BuildManifest which contains a list of all files and their respective hash.
-Then uplods the files to a remote.
+Then uploads the files to a remote.
 AppUpdater is reading the BuildManifest on the remote and checking the local files for any differences in hashes or missing files and then downloading them.
 
 ## Views
