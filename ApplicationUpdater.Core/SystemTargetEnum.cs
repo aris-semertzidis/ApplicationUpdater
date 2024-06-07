@@ -7,6 +7,7 @@ public enum SystemTargetEnum
 {
     LocalFileSystem = 0,
     FTP = 1,
+    HTTP = 2,
     // Add more system targets here
 }
 
@@ -25,9 +26,9 @@ public class SystemTargetEnumerable : IEnumerable
         StringBuilder sb = new();
         foreach (object? item in this)
         {
-            sb.Append("(");
+            sb.Append('(');
             sb.Append((int)(SystemTargetEnum)item);
-            sb.Append(")");
+            sb.Append(')');
             sb.Append(item);
             sb.Append(", ");
         }

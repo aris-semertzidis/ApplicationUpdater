@@ -7,6 +7,13 @@ public class SystemFileHandler : IFileWriter, IFileLoader
     public event EventHandlerT<int, int>? onProgress;
     public event EventHandlerT<string>? onStatusUpdate;
 
+    private readonly string sourcePath;
+
+    public SystemFileHandler(string sourcePath)
+    {
+        this.sourcePath = sourcePath;
+    }
+
     #region IFileWriter
 
     public async Task WriteFiles(BuildManifest manifest, string sourcePath, string destinationPath, string manifestName)
@@ -45,9 +52,9 @@ public class SystemFileHandler : IFileWriter, IFileLoader
 
     #region IFileLoader
 
-    public Task<BuildManifest> LoadManifest(string buildPath, string manifestName)
+    public Task<BuildManifest> LoadManifest(string manifestName)
     {
-        string buildManifestSourcePath = PathUtils.CombinePaths(buildPath, manifestName);
+        string buildManifestSourcePath = PathUtils.CombinePaths(sourcePath, manifestName);
         if (!File.Exists(buildManifestSourcePath))
             throw new FileNotFoundException($"The build manifest does not exist: {buildManifestSourcePath}");
 
@@ -56,15 +63,15 @@ public class SystemFileHandler : IFileWriter, IFileLoader
         return Task.FromResult(buildManifest);
     }
 
-    public Task LoadFiles(BuildManifest buildManifest, string buildPath, string destinationPath)
+    public Task LoadFiles(BuildManifest buildManifest, string localBuildPath)
     {
         for (int i = 0; i < buildManifest.items.Length; i++)
         {
             BuildManifest.ManifestItem item = buildManifest.items[i];
-            CopyFile(buildPath, destinationPath, item.fileName);
+            CopyFile(sourcePath, localBuildPath, item.fileName);
         }
 
-        onStatusUpdate?.Invoke($"Finished copying all files to:{destinationPath}");
+        onStatusUpdate?.Invoke($"Finished copying all files to:{localBuildPath}");
         return Task.CompletedTask;
     }
 

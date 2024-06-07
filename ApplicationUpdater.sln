@@ -11,6 +11,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationBuilder.Console"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApplicationUpdater.Console", "Views\ApplicationUpdater.Console\ApplicationUpdater.Console.csproj", "{AC47E127-0130-4E39-9881-D2A80E6707C9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApplicationUpdater.WinForms", "Views\ApplicationUpdater.WinForms\ApplicationUpdater.WinForms.csproj", "{1FD52A9B-2432-49B3-8B35-A41BF18DCCBD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,6 +31,10 @@ Global
 		{AC47E127-0130-4E39-9881-D2A80E6707C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AC47E127-0130-4E39-9881-D2A80E6707C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AC47E127-0130-4E39-9881-D2A80E6707C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FD52A9B-2432-49B3-8B35-A41BF18DCCBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FD52A9B-2432-49B3-8B35-A41BF18DCCBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FD52A9B-2432-49B3-8B35-A41BF18DCCBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FD52A9B-2432-49B3-8B35-A41BF18DCCBD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -36,6 +42,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{88EB5BA1-EA2C-4475-B04D-5E7BC67AD784} = {A0DC1C2D-E8DB-40E5-925C-12182C068106}
 		{AC47E127-0130-4E39-9881-D2A80E6707C9} = {A0DC1C2D-E8DB-40E5-925C-12182C068106}
+		{1FD52A9B-2432-49B3-8B35-A41BF18DCCBD} = {A0DC1C2D-E8DB-40E5-925C-12182C068106}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F6A7E8C9-B486-4989-AA33-AF71142E7DC9}

@@ -50,7 +50,7 @@ internal class Program
         switch (systemTargetEnum)
         {
             case SystemTargetEnum.LocalFileSystem:
-                dataWriter = new SystemFileHandler();
+                dataWriter = new SystemFileHandler(sourcePath);
                 break;
             case SystemTargetEnum.FTP:
                 string text = File.ReadAllText(FTP_PARAMS_PATH);
@@ -112,7 +112,7 @@ internal class Program
     }
 
     /// <summary>
-    /// Create a template file for FTP options.
+    /// Create a template file for FTP config.
     /// </summary>
     private static void CreateTemplateFile()
     {
@@ -120,7 +120,6 @@ internal class Program
         string projectDirectory = GetProjectPath().FullName;
         string filePath = Path.Combine(projectDirectory, "Template", "ftp.json");
         File.WriteAllText(filePath, json);
-
     }
 
     private static DirectoryInfo GetProjectPath()

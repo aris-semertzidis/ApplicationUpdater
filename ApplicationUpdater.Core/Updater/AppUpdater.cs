@@ -19,32 +19,27 @@ public class AppUpdater : IHaveProgressEvents
         dataLoader.onProgress += (progress, total) => onProgress?.Invoke(progress, total);
     }
 
-    public async Task UpdateApplication(string buildPath, string destinationPath, string manifestName)
+    public async Task UpdateApplication(string localBuildPath, string manifestName)
     {
         // Download them in a temp folder
         string tempPath = Path.Combine(Environment.CurrentDirectory, "Tmp");
         IOUtils.DeleteFolder(tempPath);
 
-        BuildManifest buildManifest = await dataLoader.LoadManifest(buildPath, manifestName);
+        BuildManifest buildManifest = await dataLoader.LoadManifest(manifestName);
         if (buildManifest == null)
             throw new Exception("Failed to load manifest");
 
-        List<BuildManifest.ManifestItem> invalidFiles = AppFileValidator.ValidateFiles(buildManifest, destinationPath);
+        List<BuildManifest.ManifestItem> invalidFiles = AppFileValidator.ValidateFiles(buildManifest, localBuildPath);
 
         if (invalidFiles.Count > 0)
         {
             BuildManifest buildManifestDiff = new BuildManifest(invalidFiles.Count);
             buildManifestDiff.items = invalidFiles.ToArray();
-            bool success = await DownloadFiles(dataLoader, buildManifestDiff, buildPath, tempPath);
-            if (!success)
-            {
-                onStatusUpdate?.Invoke("Failed to download files after 3 retries. Aborting...");
-            }
-            else
-            {
-                onStatusUpdate?.Invoke("Moving temp files into application");
-                IOUtils.CopyFolder(tempPath, destinationPath, false);
-            }
+            bool success = await DownloadFiles(dataLoader, buildManifestDiff, tempPath);
+
+            onStatusUpdate?.Invoke("Moving temp files into application");
+            IOUtils.CopyFolder(tempPath, localBuildPath, false);
+
             onStatusUpdate?.Invoke("Clearing up temp files");
             IOUtils.DeleteFolder(tempPath);
         }
@@ -55,22 +50,21 @@ public class AppUpdater : IHaveProgressEvents
 
     }
 
-    private async Task<bool> DownloadFiles(IFileLoader dataLoader, BuildManifest buildManifest, string buildPath, string destinationPath)
+    private async Task<bool> DownloadFiles(IFileLoader dataLoader, BuildManifest buildManifest, string destinationPath)
     {
         const int RETRY_COUNT = 3;
         int retries = 0;
         while (++retries < RETRY_COUNT)
         {
-            await dataLoader.LoadFiles(buildManifest, buildPath, destinationPath);
+            await dataLoader.LoadFiles(buildManifest, destinationPath);
 
             List<BuildManifest.ManifestItem> invalidFiles = AppFileValidator.ValidateFiles(buildManifest, destinationPath);
             if (invalidFiles.Count == 0)
                 break;
 
-            if (invalidFiles.Count > 0)
-            {
-                onStatusUpdate?.Invoke("Invalid files detected. Redownloading...");
-            }
+            buildManifest = new BuildManifest(invalidFiles.Count);
+            buildManifest.items = invalidFiles.ToArray();
+            onStatusUpdate?.Invoke("Invalid files detected. Redownloading...");
         }
 
         return retries < RETRY_COUNT;

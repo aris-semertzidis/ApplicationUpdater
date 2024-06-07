@@ -13,6 +13,6 @@ public interface IFileWriter : IHaveProgressEvents
 
 public interface IFileLoader : IHaveProgressEvents
 {
-    Task LoadFiles(BuildManifest buildManifest, string buildPath, string destinationPath);
-    Task<BuildManifest> LoadManifest(string buildPath, string manifestName);
+    Task LoadFiles(BuildManifest buildManifest, string localBuildPath);
+    Task<BuildManifest> LoadManifest(string manifestName);
 }

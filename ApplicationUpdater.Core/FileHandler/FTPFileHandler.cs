@@ -1,4 +1,5 @@
-﻿using ApplicationUpdater.Core.Utils;
+﻿using ApplicationUpdater.Core.Logger;
+using ApplicationUpdater.Core.Utils;
 using System.Net;
 using System.Text;
 
@@ -45,18 +46,21 @@ public class FTPConfig
     }
 }
 
-public class FTPFileHandler : IFileWriter, IFileLoader
+public class FTPFileHandler : IFileWriter
 {
     public event EventHandlerT<int, int>? onProgress;
     public event EventHandlerT<string>? onStatusUpdate;
 
     private readonly FTPConfig config;
     private readonly NetworkCredential networkCredentials;
+    private readonly ILogger? logger;
+
     private string workingDirectory = "";
 
-    public FTPFileHandler(FTPConfig config)
+    public FTPFileHandler(FTPConfig config, ILogger? logger = null)
     {
         this.config = config;
+        this.logger = logger;
         networkCredentials = new NetworkCredential(this.config.username, this.config.password);
 
         if (!config.allowFilesWithoutExtensions && string.IsNullOrEmpty(config.temporalFileExtension))
@@ -96,7 +100,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         }
     }
 
-    private List<string> GetAllDirectories(BuildManifest buildManifest)
+    private static List<string> GetAllDirectories(BuildManifest buildManifest)
     {
         List<string> allDirectories = new List<string>();
         foreach (BuildManifest.ManifestItem item in buildManifest.items)
@@ -107,85 +111,6 @@ public class FTPFileHandler : IFileWriter, IFileLoader
 
         return allDirectories.GroupBy(directory => directory).Select(directory => directory.First()).ToList();
     }
-
-    public async Task<BuildManifest> LoadManifest(string buildPath, string manifestName)
-    {
-        string buildManifestJson = await DownloadTextFileToMemory(PathUtils.CombinePaths(buildPath, manifestName));
-        return JsonWrapper.Deserialize<BuildManifest>(buildManifestJson);
-    }
-
-    public async Task LoadFiles(BuildManifest buildManifest, string buildPath, string destinationPath)
-    {
-        Task[] tasks = new Task[buildManifest.items.Length];
-        for (int i = 0; i < buildManifest.items.Length; i++)
-        {
-            BuildManifest.ManifestItem item = buildManifest.items[i];
-            string itemName = item.fileName;
-
-            // If configuration not allowing files without extensions, find the file having the temporal extension
-            if (!Path.HasExtension(item.fileName) && !config.allowFilesWithoutExtensions)
-                itemName = $"{item.fileName}.{config.temporalFileExtension}";
-
-            string sourceFilePath = PathUtils.CombinePaths(buildPath, itemName);
-
-            // Destination file path is without the temporal extension
-            string destinationFilePath = PathUtils.CombinePaths(destinationPath, item.fileName);
-            Task downloadTask = DownloadFile(destinationFilePath, sourceFilePath);
-            tasks[i] = downloadTask;
-        }
-
-        await Task.WhenAll(tasks);
-        onStatusUpdate?.Invoke("Finished downloading all files");
-    }
-
-    #region Download Files
-
-    /// <summary>
-    /// Download a file from the remote server to memory and parse it as string.
-    /// </summary>
-    private async Task<string> DownloadTextFileToMemory(string remoteFilePath)
-    {
-        onStatusUpdate?.Invoke($"Downloading {remoteFilePath}");
-        using Stream stream = await GetRemoteFileStream(remoteFilePath);
-        using MemoryStream memoryStream = new();
-        await stream.CopyToAsync(memoryStream);
-        return Encoding.UTF8.GetString(memoryStream.ToArray());
-    }
-
-    /// <summary>
-    /// Download a file from the remote server to local system.
-    /// </summary>
-    private async Task DownloadFile(string localFilePath, string remoteFilePath)
-    {
-        onStatusUpdate?.Invoke($"Downloading {remoteFilePath} to {localFilePath}");
-
-        // Create directory for file
-        IOUtils.CreateDirectory(Path.GetDirectoryName(localFilePath)!);
-
-        try
-        {
-            using Stream stream = await GetRemoteFileStream(remoteFilePath);
-            using FileStream fileStream = new(localFilePath, FileMode.Create);
-            await stream.CopyToAsync(fileStream);
-        }
-        catch (Exception ex)
-        {
-            onStatusUpdate?.Invoke($"There was an error downloading file:{remoteFilePath} to local path:{localFilePath}. ex:{ex}");
-        }
-    }
-
-    private static async Task<Stream> GetRemoteFileStream(string remoteFilePath)
-    {
-        // Check if there is already a http or https prefix
-        // TODO: Add config for forcing https
-        if (!remoteFilePath.StartsWith("http"))
-            remoteFilePath = "http://" + remoteFilePath;
-
-        using HttpClient client = new();
-        return await client.GetStreamAsync(remoteFilePath);
-    }
-
-    #endregion
 
     #region FTP Functions
 
@@ -222,7 +147,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         {
             using (FtpWebResponse resp = (FtpWebResponse)webRequest.GetResponse())
             {
-                onStatusUpdate?.Invoke(resp.StatusCode.ToString());
+                Log($"Creating directory:{directory} returned code:{resp.StatusCode}");
             }
         }
         catch (WebException ex)
@@ -235,7 +160,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         }
         catch (Exception ex)
         {
-            onStatusUpdate?.Invoke($"Create directory:{directory} failed:{ex}");
+            Log($"Create directory:{directory} failed:{ex}", LogType.Exception);
         }
         return Task.CompletedTask;
     }
@@ -244,7 +169,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
     {
         if (!File.Exists(localFilePath))
         {
-            onStatusUpdate?.Invoke($"File does not exist: {localFilePath}");
+            Log($"File does not exist: {localFilePath}", LogType.Error);
             return Task.CompletedTask;
         }
 
@@ -258,7 +183,7 @@ public class FTPFileHandler : IFileWriter, IFileLoader
 
         try
         {
-            onStatusUpdate?.Invoke($"Uploading file: {remoteFilePath}");
+            Log($"Uploading file: {remoteFilePath}");
             using (Stream fileStream = File.OpenRead(localFilePath))
             {
                 using (Stream ftpStream = webRequest.GetRequestStream())
@@ -270,12 +195,11 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         catch (WebException e)
         {
             string status = ((FtpWebResponse)e.Response!).StatusDescription!;
-            onStatusUpdate?.Invoke(status);
-            onStatusUpdate?.Invoke($"Uploading failed for local file:{localFilePath}, remote file:{remoteFilePath}, status:{status}, ex:{e}");
+            Log($"Uploading failed for local file:{localFilePath}, remote file:{remoteFilePath}, status:{status}, ex:{e}", LogType.Exception);
         }
         catch (Exception ex)
         {
-            onStatusUpdate?.Invoke($"Uploading failed for local file:{localFilePath}, remote file:{remoteFilePath}, exception:{ex}");
+            Log($"Uploading failed for local file:{localFilePath}, remote file:{remoteFilePath}, exception:{ex}", LogType.Exception);
         }
         return Task.CompletedTask;
     }
@@ -287,12 +211,12 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         {
             using (FtpWebResponse resp = (FtpWebResponse)webRequest.GetResponse())
             {
-                onStatusUpdate?.Invoke(resp.StatusCode.ToString());
+                Log($"Deleted file:{directory} returned code:{resp.StatusCode}");
             }
         }
         catch (Exception ex)
         {
-            onStatusUpdate?.Invoke($"Delete directory:{directory} failed:{ex}");
+            Log($"Delete directory:{directory} failed:{ex}", LogType.Exception);
         }
     }
 
@@ -306,13 +230,19 @@ public class FTPFileHandler : IFileWriter, IFileLoader
         try
         {
             FtpWebResponse renameResponse = (FtpWebResponse)webRequest.GetResponse();
-            onStatusUpdate?.Invoke($"Renamed file:{remoteFile}, to {remoteFileNewName}");
+            Log($"Renamed file:{remoteFile}, to {remoteFileNewName} returned code:{renameResponse.StatusCode}");
         }
         catch (Exception ex)
         {
-            onStatusUpdate?.Invoke($"Error renaming file:{ex}");
+            Log($"Error renaming file{remoteFile} throw {ex}", LogType.Exception);
         }
     }
 
     #endregion
+    private void Log(string message, LogType type = LogType.Info)
+    {
+        logger?.Log(message, type);
+        if (type == LogType.Info)
+            onStatusUpdate?.Invoke(message);
+    }
 }

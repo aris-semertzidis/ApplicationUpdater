@@ -1,23 +1,19 @@
 ﻿using ApplicationUpdater.Core;
 using ApplicationUpdater.Core.FileHandler;
+using ApplicationUpdater.Core.Logger;
 using ApplicationUpdater.Core.Updater;
 using ApplicationUpdater.Core.Utils;
 
 internal class Program
 {
     private const int EXPECTED_ARGS_COUNT = 3;
-    private const string FTP_PARAMS_PATH = "ftp.json";
-
-    private static DirectoryInfo GetProjectPath()
-    {
-        return Directory.GetParent(Environment.CurrentDirectory)!.Parent!.Parent!;
-    }
+    private const string HTTP_CONFIG_PATH = "http.json";
 
     private static async Task Main(string[] args)
     {
-        string? remoteBuildPath = null;
-        string? localAppPath = null;
-        int systemTarget = -1;
+        string? remoteBuildPath;
+        string? localAppPath;
+        int systemTarget;
 
         // Wrong command line arguments
         if (args.Length > 0 && !ValidateArguments(args))
@@ -46,24 +42,26 @@ internal class Program
                     systemTarget = int.Parse(inputs[2]);
                     break;
                 }
-
             }
         }
 
         SystemTargetEnum systemTargetEnum = (SystemTargetEnum)systemTarget;
         IFileLoader dataLoader;
+        ILogger logger = new ConsoleLogger();
         switch (systemTargetEnum)
         {
             case SystemTargetEnum.LocalFileSystem:
-                dataLoader = new SystemFileHandler();
+                dataLoader = new SystemFileHandler(remoteBuildPath);
                 break;
             case SystemTargetEnum.FTP:
-                string text = File.ReadAllText(FTP_PARAMS_PATH);
-                FTPConfig? ftpConfig = JsonWrapper.Deserialize<FTPConfig>(text);
-                if (ftpConfig == null)
-                    throw new Exception("FTP config is not valid.");
+                throw new NotImplementedException("FTP download is not implemented yet.");
+            case SystemTargetEnum.HTTP:
+                string httpText = File.ReadAllText(HTTP_CONFIG_PATH);
+                HttpConfig? httpConfig = JsonWrapper.Deserialize<HttpConfig>(httpText);
+                if (httpConfig == null)
+                    throw new Exception("HTTP config is not valid.");
 
-                dataLoader = new FTPFileHandler(ftpConfig);
+                dataLoader = new HttpClientFileHandler(httpConfig, logger);
                 break;
             default:
                 throw new NotSupportedException();
@@ -71,16 +69,9 @@ internal class Program
 
         string manifestName = "manifest.json";
         AppUpdater appUpdater = new(dataLoader);
-        appUpdater.onStatusUpdate += ConsoleWriteLine;
         await appUpdater.UpdateApplication(
-            remoteBuildPath,
             localAppPath, 
             manifestName);
-    }
-
-    private static void ConsoleWriteLine(string log)
-    {
-        Console.WriteLine(log);
     }
 
     private static bool ValidateArguments(string[] args)
@@ -103,8 +94,26 @@ internal class Program
             return true;
         }
     }
+
     private static void LogUsage()
     {
         Console.WriteLine("You must provide 2 arguments: the remote build path, the local destination path");
+    }
+
+    /// <summary>
+    /// Create a template file for HTTP config.
+    /// </summary>
+    private static void CreateTemplateFile()
+    {
+        string json = JsonWrapper.Serialize(new HttpConfig() {url = "" });
+        string projectDirectory = GetProjectPath().FullName;
+        string filePath = Path.Combine(projectDirectory, "Template", "http.json");
+        IOUtils.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        File.WriteAllText(filePath, json);
+    }
+
+    private static DirectoryInfo GetProjectPath()
+    {
+        return Directory.GetParent(Environment.CurrentDirectory)!.Parent!.Parent!;
     }
 }
