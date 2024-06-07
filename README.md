@@ -15,3 +15,4 @@ This is a work in progress program, but the basic functionality is working.
 
 ## Future Development
 Extend the IWriter interface for AWS S3 storage.
+Create a versioning system so can have multiple versions and environments (beta, release etc) before fetching the manifest.
